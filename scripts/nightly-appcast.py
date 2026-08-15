@@ -35,7 +35,10 @@ def rfc822_now():
 
 def read_app_info(zip_path):
     with zipfile.ZipFile(zip_path) as zf:
-        info_name = next(n for n in zf.namelist() if n.endswith("Contents/Info.plist"))
+        # The zip may contain nested bundles (e.g. Firebase) that also have
+        # Contents/Info.plist; the top-level app bundle is the shallowest.
+        candidates = [n for n in zf.namelist() if n.endswith("Contents/Info.plist")]
+        info_name = min(candidates, key=lambda n: n.count("/"))
         with zf.open(info_name) as fh:
             info = plistlib.load(fh)
     return (
