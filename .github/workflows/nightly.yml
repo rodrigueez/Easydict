@@ -121,11 +121,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          gh release delete "${{ steps.version.outputs.tag }}" --repo "${{ github.repository }}" --yes 2>/dev/null || true
           gh release create "${{ steps.version.outputs.tag }}" artifacts/* \
             --repo "${{ github.repository }}" \
             --title "Easydict Nightly ${{ steps.version.outputs.tag }}" \
-            --notes "Nightly build of the dev branch. Updates install automatically through Easydict's built-in Check for Updates." \
-            --clobber
+            --notes "Nightly build of the dev branch. Updates install automatically through Easydict's built-in Check for Updates."
 
       - name: Download Sparkle signing tool
         run: |
