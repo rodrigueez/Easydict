@@ -1,0 +1,179 @@
+name: Easydict Nightly (Sparkle)
+
+on:
+  schedule:
+    # 19:00 UTC = 03:00 Asia/Shanghai the next day.
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: easydict-nightly
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  sync-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out fork dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Merge upstream dev into fork dev
+        id: sync
+        run: |
+          git remote add upstream https://github.com/tisfeng/Easydict.git
+          git fetch upstream dev
+          if git merge-base --is-ancestor HEAD upstream/dev; then
+            echo "status=up-to-date" >> "$GITHUB_OUTPUT"
+            echo "fork dev is already up to date with upstream dev"
+          elif git merge upstream/dev --no-edit; then
+            echo "status=merged" >> "$GITHUB_OUTPUT"
+            echo "merged upstream dev"
+          else
+            echo "status=conflict" >> "$GITHUB_OUTPUT"
+            echo "merge conflict; keeping local fork dev untouched"
+            git merge --abort
+          fi
+
+      - name: Push synced dev
+        if: steps.sync.outputs.status != 'conflict'
+        run: |
+          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:dev
+
+  build:
+    needs: sync-upstream
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+
+    steps:
+      - name: Check out fork dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 1
+
+      - name: Compute build number and release tag
+        id: version
+        run: |
+          build="$(TZ=Asia/Shanghai date +%Y%m%d%H%M)"
+          tag="nightly-$(TZ=Asia/Shanghai date +%Y%m%d)"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "notes_url=https://github.com/${{ github.repository }}/releases/tag/$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Inject nightly update feed into Info.plist
+        run: |
+          plist="Easydict/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :SUFeedURL https://raw.githubusercontent.com/${{ github.repository }}/nightly/appcast.xml" "$plist"
+          /usr/libexec/PlistBuddy -c "Set :SUPublicEDKey hfFDDJpxp6NBvSsIvSPaAt1IRR7tRsl3jYCKqlJ+3m8=" "$plist"
+          /usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$plist"
+          /usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" "$plist"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Install CocoaPods
+        run: |
+          gem install cocoapods -v 1.16.2 --no-document
+          pod install --deployment
+
+      - name: Build unsigned Release app
+        run: |
+          xcodebuild \
+            -workspace Easydict.xcworkspace \
+            -scheme Easydict \
+            -configuration Release \
+            -derivedDataPath build \
+            -destination 'generic/platform=macOS' \
+            ARCHS="$(uname -m)" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CURRENT_PROJECT_VERSION=${{ steps.version.outputs.build }} \
+            EASYDICT_RELEASE_PACKAGING=YES \
+            build
+
+      - name: Ad-hoc sign, zip and dmg
+        run: |
+          set -euo pipefail
+          app_path="build/Build/Products/Release/Easydict.app"
+          test -d "$app_path"
+          codesign --force --deep --sign - --timestamp=none "$app_path"
+          mkdir -p artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            "$app_path" "artifacts/Easydict-${{ steps.version.outputs.build }}.zip"
+          hdiutil create \
+            -volname "Easydict Nightly" \
+            -srcfolder "$app_path" \
+            -ov -format UDZO \
+            "artifacts/Easydict-${{ steps.version.outputs.build }}.dmg" || true
+          ls -lh artifacts
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" artifacts/* \
+            --repo "${{ github.repository }}" \
+            --title "Easydict Nightly ${{ steps.version.outputs.tag }}" \
+            --notes "Nightly build of the dev branch. Updates install automatically through Easydict's built-in Check for Updates." \
+            --clobber
+
+      - name: Download Sparkle signing tool
+        run: |
+          curl -sL -o sparkle.tar.xz \
+            https://github.com/sparkle-project/Sparkle/releases/download/2.6.4/Sparkle-2.6.4.tar.xz
+          tar -xJf sparkle.tar.xz || true
+          test -x bin/sign_update
+
+      - name: Generate signed appcast
+        run: |
+          set -euo pipefail
+          mkdir -p appcast_dir
+          cp "artifacts/Easydict-${{ steps.version.outputs.build }}.zip" appcast_dir/
+          curl -fsSL \
+            "https://raw.githubusercontent.com/${{ github.repository }}/nightly/appcast.xml" \
+            -o appcast_dir/prev.xml || true
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > sparkle_key.b64
+          python3 scripts/nightly-appcast.py \
+            --zip "appcast_dir/Easydict-${{ steps.version.outputs.build }}.zip" \
+            --download-url "https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/Easydict-${{ steps.version.outputs.build }}.zip" \
+            --notes-url "${{ steps.version.outputs.notes_url }}" \
+            --sign-update bin/sign_update \
+            --key-file sparkle_key.b64 \
+            --prev appcast_dir/prev.xml \
+            --out appcast_dir/appcast.xml \
+            --max-items 3
+          xmllint --noout appcast_dir/appcast.xml
+
+      - name: Publish appcast to nightly branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin nightly
+          git checkout -B nightly origin/nightly
+          cp appcast_dir/appcast.xml appcast.xml
+          git add appcast.xml
+          git commit -m "build(release): update nightly appcast (${{ steps.version.outputs.build }})" || true
+          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" nightly
+
+      - name: Prune old nightly releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --repo "${{ github.repository }}" --limit 100 \
+            | awk '$1 ~ /^nightly-/ {print $1}' \
+            | tail -n +4 | while read -r tag; do
+                echo "deleting stale release $tag"
+                gh release delete "$tag" --repo "${{ github.repository }}" --yes
+                gh api -X DELETE "repos/${{ github.repository }}/git/refs/tags/$tag" || true
+              done
