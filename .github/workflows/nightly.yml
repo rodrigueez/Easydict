@@ -31,9 +31,9 @@ jobs:
           # Upstream commits from the last 24h that are not in fork dev yet.
           new_commits="$(git rev-list --count HEAD..upstream/dev --since='24 hours ago' 2>/dev/null || echo 0)"
           echo "new_commits=$new_commits" >> "$GITHUB_OUTPUT"
-          if git merge-base --is-ancestor HEAD upstream/dev; then
+          if git merge-base --is-ancestor upstream/dev HEAD; then
             echo "status=up-to-date" >> "$GITHUB_OUTPUT"
-            echo "fork dev is already up to date with upstream dev"
+            echo "fork dev already contains all upstream dev commits"
           elif git merge upstream/dev --no-edit; then
             echo "status=merged" >> "$GITHUB_OUTPUT"
             echo "merged upstream dev"
