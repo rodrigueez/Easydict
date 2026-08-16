@@ -28,6 +28,9 @@ jobs:
         run: |
           git remote add upstream https://github.com/tisfeng/Easydict.git
           git fetch upstream dev
+          # Upstream commits from the last 24h that are not in fork dev yet.
+          new_commits="$(git rev-list --count HEAD..upstream/dev --since='24 hours ago' 2>/dev/null || echo 0)"
+          echo "new_commits=$new_commits" >> "$GITHUB_OUTPUT"
           if git merge-base --is-ancestor HEAD upstream/dev; then
             echo "status=up-to-date" >> "$GITHUB_OUTPUT"
             echo "fork dev is already up to date with upstream dev"
@@ -47,6 +50,12 @@ jobs:
 
   build:
     needs: sync-upstream
+    # Skip when there are no new upstream commits in the last 24h, unless the
+    # workflow was dispatched manually. Never build on a merge conflict.
+    if: >-
+      needs.sync-upstream.outputs.status != 'conflict' &&
+      (github.event_name == 'workflow_dispatch' ||
+       needs.sync-upstream.outputs.new_commits != '0')
     runs-on: macos-latest
     timeout-minutes: 90
     env:
