@@ -28,6 +28,8 @@ jobs:
         run: |
           git remote add upstream https://github.com/tisfeng/Easydict.git
           git fetch upstream dev
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Upstream commits from the last 24h that are not in fork dev yet.
           new_commits="$(git rev-list --count HEAD..upstream/dev --since='24 hours ago' 2>/dev/null || echo 0)"
           echo "new_commits=$new_commits" >> "$GITHUB_OUTPUT"
@@ -40,7 +42,7 @@ jobs:
           else
             echo "status=conflict" >> "$GITHUB_OUTPUT"
             echo "merge conflict; keeping local fork dev untouched"
-            git merge --abort
+            git merge --abort 2>/dev/null || true
           fi
 
       - name: Push synced dev
