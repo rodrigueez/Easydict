@@ -16,6 +16,9 @@ permissions:
 jobs:
   sync-upstream:
     runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.sync.outputs.status }}
+      new_commits: ${{ steps.sync.outputs.new_commits }}
     steps:
       - name: Check out fork dev
         uses: actions/checkout@v4
@@ -30,8 +33,8 @@ jobs:
           git fetch upstream dev
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Upstream commits from the last 24h that are not in fork dev yet.
-          new_commits="$(git rev-list --count HEAD..upstream/dev --since='24 hours ago' 2>/dev/null || echo 0)"
+          # Any upstream commits absent from fork dev require a new nightly.
+          new_commits="$(git rev-list --count HEAD..upstream/dev 2>/dev/null || echo 0)"
           echo "new_commits=$new_commits" >> "$GITHUB_OUTPUT"
           if git merge-base --is-ancestor upstream/dev HEAD; then
             echo "status=up-to-date" >> "$GITHUB_OUTPUT"
@@ -41,8 +44,9 @@ jobs:
             echo "merged upstream dev"
           else
             echo "status=conflict" >> "$GITHUB_OUTPUT"
-            echo "merge conflict; keeping local fork dev untouched"
-            git merge --abort 2>/dev/null || true
+            git merge --abort
+            echo "Upstream merge conflict; resolve it on dev before the nightly release can be built." >&2
+            exit 1
           fi
 
       - name: Push synced dev
@@ -52,7 +56,7 @@ jobs:
 
   build:
     needs: sync-upstream
-    # Skip when there are no new upstream commits in the last 24h, unless the
+    # Skip only when fork dev already contains all upstream commits, unless the
     # workflow was dispatched manually. Never build on a merge conflict.
     if: >-
       needs.sync-upstream.outputs.status != 'conflict' &&
