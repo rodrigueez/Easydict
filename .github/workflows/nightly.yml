@@ -175,7 +175,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin nightly
-          git checkout -B nightly origin/nightly
+          # xcodebuild can update project metadata in this disposable runner.
+          # Discard those build-side changes before switching branches.
+          git checkout -f -B nightly origin/nightly
           cp appcast_dir/appcast.xml appcast.xml
           git add appcast.xml
           git commit -m "build(release): update nightly appcast (${{ steps.version.outputs.build }})" || true
