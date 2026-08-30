@@ -4,14 +4,22 @@
         <title>Easydict Nightly</title>
         <item>
             <title>2.22.0</title>
+            <pubDate>Mon, 31 Aug 2026 06:05:45 +0800</pubDate>
+            <sparkle:version>202608310543</sparkle:version>
+            <sparkle:shortVersionString>2.22.0</sparkle:shortVersionString>
+            <sparkle:releaseNotesLink>https://github.com/rodrigueez/Easydict/releases/tag/nightly-20260831</sparkle:releaseNotesLink>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/rodrigueez/Easydict/releases/download/nightly-20260831/Easydict-202608310543.zip" length="24298779" type="application/octet-stream" sparkle:edSignature="qJyWCsEf5uwndJoYVr1cV0UR1FsgIQ/rCMWjKhZPoPDUbDFpzwFZhmIrP2nobHa8R2LVbpstcFtrqXuSChFCDQ=="/>
+        </item>
+<item>
+            <title>2.22.0</title>
             <pubDate>Sun, 30 Aug 2026 05:42:17 +0800</pubDate>
             <sparkle:version>202608300522</sparkle:version>
             <sparkle:shortVersionString>2.22.0</sparkle:shortVersionString>
             <sparkle:releaseNotesLink>https://github.com/rodrigueez/Easydict/releases/tag/nightly-20260830</sparkle:releaseNotesLink>
             <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/rodrigueez/Easydict/releases/download/nightly-20260830/Easydict-202608300522.zip" length="24298906" type="application/octet-stream" sparkle:edSignature="ZhtjFwnwppl16pfZfGyrkl+QpKxBCY+9LisqkPV6+rXxjc/6Ppg0TUeLiEZCaaCsk19v/HClyITT3CcDhoNXBg=="/>
-        </item>
-<item>
+        </item><item>
             <title>2.22.0</title>
             <pubDate>Fri, 28 Aug 2026 10:43:58 +0800</pubDate>
             <sparkle:version>202608281023</sparkle:version>
@@ -19,13 +27,5 @@
             <sparkle:releaseNotesLink>https://github.com/rodrigueez/Easydict/releases/tag/nightly-20260828</sparkle:releaseNotesLink>
             <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/rodrigueez/Easydict/releases/download/nightly-20260828/Easydict-202608281023.zip" length="24298531" type="application/octet-stream" sparkle:edSignature="41pz2qXZ1oyR18a3ztvweNe4LIxx2zyPkmDyBUQ4fcTPl8RyUFpAsLO2sFROYemGLCQuoYWPC7Tck0nXXbYsAA=="/>
-        </item><item>
-            <title>2.22.0</title>
-            <pubDate>Thu, 27 Aug 2026 16:30:20 +0800</pubDate>
-            <sparkle:version>202608271611</sparkle:version>
-            <sparkle:shortVersionString>2.22.0</sparkle:shortVersionString>
-            <sparkle:releaseNotesLink>https://github.com/rodrigueez/Easydict/releases/tag/nightly-20260827</sparkle:releaseNotesLink>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/rodrigueez/Easydict/releases/download/nightly-20260827/Easydict-202608271611.zip" length="24299136" type="application/octet-stream" sparkle:edSignature="/eti+q2soPbiSVTD+FWImQj2UlGnb3tPk3nrhSYYzSlEeuNxAoTleyDVJrPMK+nduSJrNnP1C8zT8iOum4dfCw=="/>
         </item>    </channel>
 </rss>
